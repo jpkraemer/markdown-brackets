@@ -31,6 +31,7 @@ define(function (require, exports, module) {
     InlineMarkdownViewer.prototype.parentClass                  = InlineWidget.prototype;   
 
     InlineMarkdownViewer.prototype.$contentDiv                  = null;
+    InlineMarkdownViewer.prototype.$heightDummyDiv              = null;
 
     InlineMarkdownViewer.prototype._visibleRange                = null;
     InlineMarkdownViewer.prototype._hideRangeStart              = -1; 
@@ -49,6 +50,13 @@ define(function (require, exports, module) {
         var html = ShowdownConverter.makeHtml(sourceString);
         this.$contentDiv.empty();
         this.$contentDiv.append(html);
+
+        // refresh height dummy 
+        this.$heightDummyDiv.empty(); 
+        this.$heightDummyDiv.append($(this.$contentDiv[0]).clone());
+
+        //renew height calculation 
+        setTimeout(this.sizeInlineWidgetToContents.bind(this, true, true), 0);
     };
 
     InlineMarkdownViewer.prototype.load = function (hostEditor, startLine, endLine) {
@@ -63,18 +71,29 @@ define(function (require, exports, module) {
         // Create DOM to hold editors and related list
         this.$contentDiv = $(document.createElement('div')).addClass("inlineMarkdownCommentHolder");
         
-        // render
-        this._renderMarkdown();
-
         //remove inherited shadow from main container
         this.$htmlContent.empty();
 
         // attach to main container
         this.$htmlContent.append(this.$contentDiv);
-        
+
+        // We create the same content in a div just serving as a dummy for height calculation. 
+        // The reason for this hack is, that codeMirror will dynamically insert and remove inline widgets into or from the DOM tree.
+        // For widgets not currently inserted in the DOM tree, the height cannot be calculated. 
+        // For our hidden but inserted height dummy div, the height can always be calculated.
+        // However, this is a hack as it messes up the DOM. Code Mirror should be patched to ask for the widget 
+        // height after inserting it in the DOM.
+        this.$heightDummyDiv = (this.$htmlContent).clone(); 
+        this.$heightDummyDiv.css('display', 'none'); 
+        var parentForHeightDummy = this.hostEditor._codeMirror.getWrapperElement().getElementsByClassName('CodeMirror-lines')[0].parentElement; 
+        $(parentForHeightDummy).append(this.$heightDummyDiv); 
+
+        // render
+        this._renderMarkdown();
+
         // ensureVisibility is set to false because we don't want to scroll the main editor when the user selects a view
         // this.sizeInlineWidgetToContents(true, true);
-        setTimeout(this.sizeInlineWidgetToContents.bind(this, true, true), 0);
+        // setTimeout(this.sizeInlineWidgetToContents.bind(this, true, false), 0);
 
         // register click handler to open an editor for the markdown source
         this.$htmlContent.on("click", this._onClick.bind(this));
@@ -115,7 +134,7 @@ define(function (require, exports, module) {
         // Size the code mirror editors height to the editor content
         // this.parentClass.sizeInlineWidgetToContents.call(this, force);
         // Size the widget height to the max between the editor content and the related rules list
-        var widgetHeight = this.$htmlContent[0].scrollHeight;
+        var widgetHeight = $(this.$heightDummyDiv[0]).outerHeight();
         this.hostEditor.setInlineWidgetHeight(this, widgetHeight, ensureVisibility);
 
         // The related rules container size itself based on htmlContent which is set by setInlineWidgetHeight above.

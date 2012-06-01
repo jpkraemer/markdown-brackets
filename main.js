@@ -123,14 +123,15 @@ define(function (require, exports, module) {
     	}
 
         var currentHostEditor = EditorManager.getCurrentFullEditor(); 
-        currentHostEditor._codeMirror.operation(function (){
+        // currentHostEditor._codeMirror.operation(function (){
         	_eachCommentInEditor(currentHostEditor, function eachCommentCallback (hostEditor, start, end) {
 
         		var inlineMarkdownViewer = new InlineMarkdownViewer(); 
         		inlineMarkdownViewer.load(hostEditor, start, end);
         		hostEditor.addInlineWidget({line: (start > 0) ? start -1 : end + 1, ch:0}, inlineMarkdownViewer); 
         	});
-        });
+
+        // });
     }
 
     function _loadStyles() {
@@ -142,16 +143,18 @@ define(function (require, exports, module) {
                 console.assert(!err, err);
                 var style = $("<style>" + tree.toCSS() + "</style>");
                 $(document.head).append(style);
+        
+                // now all resources for succesful rendering are loaded
+                init();
             });
         };
         request.send(null);
     }
 
     /**
-     * This function is run when the DOM tree is loaded
+     * This function is run when the css is loaded
      */
     function init() {
-        // EditorManager.registerInlineEditProvider(markdownProvider);
         $(DocumentManager).on('currentDocumentChange', _onCurrentDocumentChange); 
         _onCurrentDocumentChange();
     }
@@ -162,6 +165,6 @@ define(function (require, exports, module) {
     _loadStyles();
 
     // init
-    $(init);
+    // $(init);
 });
 
